@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            artifact_name: gwt-linux-amd64
+          - os: linux
+            arch: arm64
+            artifact_name: gwt-linux-arm64
+          - os: darwin
+            arch: amd64
+            artifact_name: gwt-darwin-amd64
+          - os: darwin
+            arch: arm64
+            artifact_name: gwt-darwin-arm64
+          - os: windows
+            arch: amd64
+            artifact_name: gwt-windows-amd64.exe
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p dist
+          go build -ldflags "-X main.Version=${{ github.ref_name }}" \
+            -o dist/${{ matrix.artifact_name }} main.go
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: dist
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p release
+          for dir in dist/*/; do
+            cp "$dir"* release/ 2>/dev/null || true
+          done
+          ls -la release/
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            ## Changes in this Release
+
+            Please describe the changes included in this release.
+
+            ## Installation
+
+            Download the appropriate binary for your platform:
+
+            - **Linux (x86_64)**: `gwt-linux-amd64`
+            - **Linux (ARM64)**: `gwt-linux-arm64`
+            - **macOS (Intel)**: `gwt-darwin-amd64`
+            - **macOS (Apple Silicon)**: `gwt-darwin-arm64`
+            - **Windows (x86_64)**: `gwt-windows-amd64.exe`
+
+            Then make it executable and add to your PATH:
+
+            ```bash
+            chmod +x gwt-linux-amd64
+            mv gwt-linux-amd64 /usr/local/bin/gwt
+            ```
+          draft: true
+          prerelease: false
+
+      - name: Upload Release Assets
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Get the release
+            const releases = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const release = releases.data.find(r => r.tag_name === context.ref.replace('refs/tags/', ''));
+
+            // Upload files
+            const releaseDir = 'release';
+            const files = fs.readdirSync(releaseDir);
+
+            for (const file of files) {
+              const filePath = path.join(releaseDir, file);
+              const fileContent = fs.readFileSync(filePath);
+
+              await github.rest.repos.uploadReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id,
+                name: file,
+                data: fileContent,
+              });
+            }
