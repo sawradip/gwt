@@ -84,8 +84,13 @@ func ResolvePatternForRepo(pattern string, repoRoot string, branch string) (stri
 	if !filepath.IsAbs(path) {
 		if strings.HasPrefix(path, ".."+string(filepath.Separator)) || strings.HasPrefix(path, "../") {
 			// Relative to the parent of repo root
-			repoParent := filepath.Dir(repoRoot)
-			path = filepath.Join(repoParent, path)
+			// First normalize repoRoot to get its true parent
+			repoParent := filepath.Dir(filepath.Clean(repoRoot))
+			// Remove the leading ../ from the pattern before joining
+			relativePath := strings.TrimPrefix(path, "../")
+			relativePath = strings.TrimPrefix(relativePath, ".."+string(filepath.Separator))
+			// Join the relative pattern from the repo's parent
+			path = filepath.Join(repoParent, relativePath)
 		} else {
 			// Relative to repo root
 			path = filepath.Join(repoRoot, path)

@@ -8,20 +8,38 @@ import (
 	"github.com/yourusername/gwt/internal/path"
 )
 
+// Reserved names that cannot be used as worktree names
+var reservedNames = map[string]bool{
+	"main":   true,
+	"master": true,
+}
+
 // Create creates a new worktree for the given branch
 func Create(branch string) error {
 	if branch == "" {
 		return fmt.Errorf("branch name required")
 	}
 
-	if branch == "main" {
-		return fmt.Errorf("cannot create worktree named 'main' (reserved for main repository)")
+	if reservedNames[branch] {
+		return fmt.Errorf("'%s' is a reserved name and cannot be used as a worktree name", branch)
 	}
 
 	// Get repo root
 	repoRoot, err := git.GetRepoRoot()
 	if err != nil {
 		return err
+	}
+
+	// Check if worktree with this branch name already exists
+	worktrees, err := git.ListWorktrees()
+	if err != nil {
+		return err
+	}
+
+	for path, b := range worktrees {
+		if b == branch && path != repoRoot {
+			return fmt.Errorf("worktree '%s' already exists at %s\nUse 'gwt cd %s' to switch to it", branch, path, branch)
+		}
 	}
 
 	// Get path pattern from config
@@ -34,11 +52,6 @@ func Create(branch string) error {
 	worktreePath, err := path.ResolvePatternForRepo(pattern, repoRoot, branch)
 	if err != nil {
 		return err
-	}
-
-	// Check if worktree already exists
-	if git.WorktreeExists(worktreePath) {
-		return fmt.Errorf("worktree already exists at %s\nUse 'gwt cd %s' to switch to it", worktreePath, branch)
 	}
 
 	// Create the worktree

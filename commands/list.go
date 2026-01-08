@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/fatih/color"
@@ -18,8 +17,8 @@ func List() error {
 
 	repoName := filepath.Base(repoRoot)
 
-	// Get current working directory
-	cwd, err := os.Getwd()
+	// Get current worktree path (where we actually are)
+	currentWtPath, err := git.GetCurrentWorktreePath()
 	if err != nil {
 		return err
 	}
@@ -27,7 +26,7 @@ func List() error {
 	fmt.Printf("Worktrees for %s:\n\n", repoName)
 
 	// Check if we're in the main repo
-	isInMain := isInMainRepo(cwd, repoRoot)
+	isInMain := filepath.Clean(currentWtPath) == filepath.Clean(repoRoot)
 
 	// Print main repo
 	if isInMain {
@@ -45,13 +44,12 @@ func List() error {
 	// Filter and display worktrees (excluding main)
 	for wtPath, branch := range worktrees {
 		// Skip the main repository entry from git worktree list
-		if wtPath == repoRoot {
+		if filepath.Clean(wtPath) == filepath.Clean(repoRoot) {
 			continue
 		}
 
 		// Check if this is the current worktree
-		currentPath := filepath.Clean(cwd)
-		isCurrentWT := filepath.Clean(wtPath) == currentPath || isPathInWorktree(currentPath, wtPath)
+		isCurrentWT := filepath.Clean(wtPath) == filepath.Clean(currentWtPath)
 
 		if isCurrentWT {
 			color.Green("  * %s (%s)", branch, branch)
@@ -61,25 +59,4 @@ func List() error {
 	}
 
 	return nil
-}
-
-// isInMainRepo checks if the current directory is in the main repository
-func isInMainRepo(cwd string, repoRoot string) bool {
-	cleanCwd := filepath.Clean(cwd)
-	cleanRepoRoot := filepath.Clean(repoRoot)
-
-	// Check if cwd is within repoRoot
-	return cleanCwd == cleanRepoRoot || (len(cleanCwd) > len(cleanRepoRoot) &&
-		cleanCwd[:len(cleanRepoRoot)] == cleanRepoRoot &&
-		(len(cleanCwd) == len(cleanRepoRoot) || cleanCwd[len(cleanRepoRoot)] == filepath.Separator))
-}
-
-// isPathInWorktree checks if a path is within a worktree directory
-func isPathInWorktree(cwd string, wtPath string) bool {
-	cleanCwd := filepath.Clean(cwd)
-	cleanWtPath := filepath.Clean(wtPath)
-
-	return cleanCwd == cleanWtPath || (len(cleanCwd) > len(cleanWtPath) &&
-		cleanCwd[:len(cleanWtPath)] == cleanWtPath &&
-		(len(cleanCwd) == len(cleanWtPath) || cleanCwd[len(cleanWtPath)] == filepath.Separator))
 }

@@ -2,20 +2,38 @@ package git
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-// GetRepoRoot returns the absolute path to the git repository root
+// GetRepoRoot returns the absolute path to the MAIN git repository root
+// (not the worktree root if currently inside a worktree)
 func GetRepoRoot() (string, error) {
+	// First check if we're in a git repo at all
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	output, err := cmd.Output()
+	_, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("not in a git repository")
 	}
-	return strings.TrimSpace(string(output)), nil
+
+	// Get the main worktree (first line of git worktree list is always main repo)
+	cmd = exec.Command("git", "worktree", "list", "--porcelain")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get main repository: %w", err)
+	}
+
+	// Parse the first "worktree <path>" line - that's the main repo
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "worktree ") {
+			return strings.TrimPrefix(line, "worktree "), nil
+		}
+	}
+
+	return "", fmt.Errorf("could not determine main repository")
 }
 
 // GetRepoName returns the basename of the repository directory
@@ -37,13 +55,15 @@ func GetCurrentBranch() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-// GetCurrentWorktree returns the path of the current worktree
-func GetCurrentWorktree() (string, error) {
-	cwd, err := os.Getwd()
+// GetCurrentWorktreePath returns the root path of the current worktree
+// (could be main repo or a worktree)
+func GetCurrentWorktreePath() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	output, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("not in a git repository")
 	}
-	return cwd, nil
+	return strings.TrimSpace(string(output)), nil
 }
 
 // BranchExists checks if a branch exists locally

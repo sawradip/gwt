@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/yourusername/gwt/internal/config"
 	"github.com/yourusername/gwt/internal/git"
-	"github.com/yourusername/gwt/internal/path"
 )
 
 // Cd prints the path to the specified worktree
@@ -27,38 +25,36 @@ func Cd(name string) error {
 		return nil
 	}
 
-	// Get path pattern
-	pattern, err := config.GetPathPattern()
+	// Get all worktrees from git
+	worktrees, err := git.ListWorktrees()
 	if err != nil {
 		return err
 	}
 
-	// Resolve the path
-	worktreePath, err := path.ResolvePatternForRepo(pattern, repoRoot, name)
-	if err != nil {
-		return err
+	// Find the worktree path for this branch
+	var worktreePath string
+	for path, branch := range worktrees {
+		// Skip main repo
+		if path == repoRoot {
+			continue
+		}
+		// Found the branch
+		if branch == name {
+			worktreePath = path
+			break
+		}
 	}
 
-	// Check if worktree exists
-	if !git.WorktreeExists(worktreePath) && !pathExists(worktreePath) {
-		fmt.Fprintf(os.Stderr, "Worktree '%s' not found at %s\n\n", name, worktreePath)
+	if worktreePath == "" {
+		fmt.Fprintf(os.Stderr, "Worktree '%s' not found\n\n", name)
 		fmt.Fprintf(os.Stderr, "Available worktrees:\n")
-
-		// List available worktrees
 		if err := List(); err != nil {
 			return err
 		}
-
 		return fmt.Errorf("worktree not found")
 	}
 
 	// Print the path to stdout
 	fmt.Println(worktreePath)
 	return nil
-}
-
-// pathExists checks if a path exists
-func pathExists(p string) bool {
-	_, err := os.Stat(p)
-	return err == nil
 }

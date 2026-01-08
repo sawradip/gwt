@@ -2,24 +2,37 @@
 
 A CLI tool for managing git worktrees with a filesystem-like interface.
 
-## Installation
+## Quick Install
 
-### Download Binary
-
-Download from [releases](https://github.com/yourusername/gwt/releases):
-
-| Platform | Binary |
-|----------|--------|
-| Linux (x64) | `gwt-linux-amd64` |
-| Linux (ARM) | `gwt-linux-arm64` |
-| macOS (Intel) | `gwt-darwin-amd64` |
-| macOS (Apple Silicon) | `gwt-darwin-arm64` |
-| Windows | `gwt-windows-amd64.exe` |
+### macOS
 
 ```bash
-# Linux/macOS
-chmod +x gwt
-sudo mv gwt /usr/local/bin/
+# Apple Silicon (M1/M2/M3)
+curl -L https://github.com/yourusername/gwt/releases/latest/download/gwt-darwin-arm64 -o gwt
+chmod +x gwt && sudo mv gwt /usr/local/bin/
+
+# Intel Mac
+curl -L https://github.com/yourusername/gwt/releases/latest/download/gwt-darwin-amd64 -o gwt
+chmod +x gwt && sudo mv gwt /usr/local/bin/
+```
+
+### Linux
+
+```bash
+# x64
+curl -L https://github.com/yourusername/gwt/releases/latest/download/gwt-linux-amd64 -o gwt
+chmod +x gwt && sudo mv gwt /usr/local/bin/
+
+# ARM64
+curl -L https://github.com/yourusername/gwt/releases/latest/download/gwt-linux-arm64 -o gwt
+chmod +x gwt && sudo mv gwt /usr/local/bin/
+```
+
+### Windows (PowerShell as Admin)
+
+```powershell
+# Download to a folder in your PATH
+Invoke-WebRequest -Uri "https://github.com/yourusername/gwt/releases/latest/download/gwt-windows-amd64.exe" -OutFile "$env:LOCALAPPDATA\Microsoft\WindowsApps\gwt.exe"
 ```
 
 ### Build from Source
@@ -27,12 +40,12 @@ sudo mv gwt /usr/local/bin/
 ```bash
 git clone https://github.com/yourusername/gwt.git
 cd gwt
-make build && make install
+go build -o gwt . && sudo mv gwt /usr/local/bin/
 ```
 
-### Shell Integration (Required for `gwt cd`)
+## Shell Integration (Required for `gwt cd`)
 
-Since a subprocess cannot change the parent shell's directory, add this wrapper function:
+Add this to your shell config, then restart your terminal:
 
 **Bash/Zsh** (`~/.bashrc` or `~/.zshrc`):
 ```bash
@@ -79,34 +92,21 @@ function gwt {
 ## Quick Start
 
 ```bash
-# Configure where worktrees are created (optional)
-gwt config --path ~/worktrees/{repo}/{branch}
-
-# Create a worktree
 cd ~/projects/myapp
-gwt feat/auth
 
-# List all worktrees
-gwt ls
-
-# Switch to a worktree
-gwt cd feat/auth
-
-# Check which worktree you're in
-gwt pwd
-
-# Go back to main repository
-gwt cd main
-
-# Remove a worktree
-gwt rm feat/auth
+gwt create feat/auth     # Create a worktree
+gwt ls                   # List all worktrees
+gwt cd feat/auth         # Switch to worktree
+gwt pwd                  # Show current worktree
+gwt cd main              # Go back to main repo
+gwt rm feat/auth         # Remove worktree
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `gwt <branch>` | Create worktree for branch |
+| `gwt create <branch>` | Create worktree for branch |
 | `gwt ls` | List all worktrees |
 | `gwt cd <name>` | Switch to worktree (or `main`) |
 | `gwt pwd` | Show current worktree name |
@@ -115,97 +115,38 @@ gwt rm feat/auth
 | `gwt config` | View path pattern |
 | `gwt config --path <pattern>` | Set path pattern |
 
-### `gwt <branch>`
-
-Creates a worktree. If the branch exists (locally or on origin), it checks it out. Otherwise, creates a new branch.
-
-```bash
-gwt feat/auth        # Creates worktree and checks out/creates branch
-gwt bugfix/issue-42  # Branch names with / are supported
-```
-
-Blocked: `gwt main` (reserved for main repository)
-
-### `gwt ls`
-
-Lists worktrees with `*` marking the current one:
-
-```
-Worktrees for myapp:
-
-  * main (main repository)
-    feat/auth (feat/auth)
-    bugfix (bugfix)
-```
-
-### `gwt cd <name>`
-
-Switches to a worktree. Use `main` to return to the main repository.
-
-```bash
-gwt cd feat/auth
-gwt cd main
-```
-
-### `gwt rm <name>`
-
-Removes a worktree and cleans up git references.
-
-```bash
-gwt rm feat/auth
-```
+All commands support `--help` for detailed usage.
 
 ## Path Patterns
 
-Patterns control where worktrees are created. Default: `../{repo}_wt/{branch}`
-
-**Placeholders:**
-- `{repo}` - Repository directory name
-- `{branch}` - Branch name you provide
-
-**Examples:**
-
-| Pattern | Repo | Branch | Result |
-|---------|------|--------|--------|
-| `../{repo}_wt/{branch}` | `~/projects/myapp` | `feat/auth` | `~/projects/myapp_wt/feat/auth` |
-| `~/worktrees/{repo}/{branch}` | `~/projects/myapp` | `feat/auth` | `~/worktrees/myapp/feat/auth` |
-| `/tmp/wt/{repo}/{branch}` | `~/projects/myapp` | `bugfix` | `/tmp/wt/myapp/bugfix` |
+Control where worktrees are created. Default: `../{repo}_wt/{branch}`
 
 ```bash
-# View current pattern with examples
+# View current pattern
 gwt config
 
-# Set a new pattern
+# Set custom pattern
 gwt config --path ~/worktrees/{repo}/{branch}
 ```
 
-Configuration is stored in git global config (`gwt.pathpattern`).
+**Placeholders:**
+- `{repo}` - Repository directory name
+- `{branch}` - Branch name
+
+**Examples:**
+
+| Pattern | Result for `feat/auth` in `myapp` repo |
+|---------|----------------------------------------|
+| `../{repo}_wt/{branch}` | `../myapp_wt/feat/auth` |
+| `~/worktrees/{repo}/{branch}` | `~/worktrees/myapp/feat/auth` |
 
 ## Troubleshooting
 
-**"Not in a git repository"**
-Run gwt from inside a git repository.
+**`gwt cd` doesn't change directory** - Add the shell function above and restart your terminal.
 
-**"Worktree already exists"**
-Use `gwt cd <name>` to switch to it, or `gwt rm <name>` to remove it first.
+**"Not in a git repository"** - Run gwt from inside a git repo.
 
-**`gwt cd` doesn't change directory**
-Add the shell function from [Shell Integration](#shell-integration-required-for-gwt-cd) and reload your shell config.
-
-**Reset path pattern to default**
-```bash
-git config --global --unset gwt.pathpattern
-```
-
-## Development
-
-```bash
-make build      # Build for current platform
-make build-all  # Build for all platforms
-make install    # Install to $GOPATH/bin
-make test       # Run tests
-make clean      # Remove build artifacts
-```
+**Reset config** - `git config --global --unset gwt.pathpattern`
 
 ## License
 
