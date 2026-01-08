@@ -8,11 +8,11 @@ A CLI tool for managing git worktrees with a filesystem-like interface.
 
 ```bash
 # Apple Silicon (M1/M2/M3)
-curl -L https://github.com/yourusername/gwt/releases/latest/download/gwt-darwin-arm64 -o gwt
+curl -L https://github.com/sawradip/gwt/releases/latest/download/gwt-darwin-arm64 -o gwt
 chmod +x gwt && sudo mv gwt /usr/local/bin/
 
 # Intel Mac
-curl -L https://github.com/yourusername/gwt/releases/latest/download/gwt-darwin-amd64 -o gwt
+curl -L https://github.com/sawradip/gwt/releases/latest/download/gwt-darwin-amd64 -o gwt
 chmod +x gwt && sudo mv gwt /usr/local/bin/
 ```
 
@@ -20,25 +20,26 @@ chmod +x gwt && sudo mv gwt /usr/local/bin/
 
 ```bash
 # x64
-curl -L https://github.com/yourusername/gwt/releases/latest/download/gwt-linux-amd64 -o gwt
+curl -L https://github.com/sawradip/gwt/releases/latest/download/gwt-linux-amd64 -o gwt
 chmod +x gwt && sudo mv gwt /usr/local/bin/
 
 # ARM64
-curl -L https://github.com/yourusername/gwt/releases/latest/download/gwt-linux-arm64 -o gwt
+curl -L https://github.com/sawradip/gwt/releases/latest/download/gwt-linux-arm64 -o gwt
 chmod +x gwt && sudo mv gwt /usr/local/bin/
 ```
 
 ### Windows (PowerShell as Admin)
 
 ```powershell
-# Download to a folder in your PATH
-Invoke-WebRequest -Uri "https://github.com/yourusername/gwt/releases/latest/download/gwt-windows-amd64.exe" -OutFile "$env:LOCALAPPDATA\Microsoft\WindowsApps\gwt.exe"
+# Download and add to PATH
+Invoke-WebRequest -Uri "https://github.com/sawradip/gwt/releases/latest/download/gwt-windows-amd64.exe" -OutFile "gwt.exe"
+Move-Item gwt.exe C:\Windows\System32\
 ```
 
 ### Build from Source
 
 ```bash
-git clone https://github.com/yourusername/gwt.git
+git clone https://github.com/sawradip/gwt.git
 cd gwt
 go build -o gwt . && sudo mv gwt /usr/local/bin/
 ```
@@ -114,6 +115,7 @@ gwt rm feat/auth         # Remove worktree
 | `gwt prune` | Clean stale references |
 | `gwt config` | View path pattern |
 | `gwt config --path <pattern>` | Set path pattern |
+| `gwt version` | Show version |
 
 All commands support `--help` for detailed usage.
 
@@ -146,7 +148,13 @@ gwt config --path ~/worktrees/{repo}/{branch}
 
 **"Not in a git repository"** - Run gwt from inside a git repo.
 
+**"Worktree already exists"** - Use `gwt cd <name>` to switch to it.
+
 **Reset config** - `git config --global --unset gwt.pathpattern`
+
+## Development
+
+See [dev.md](dev.md) for build, test, and release instructions.
 
 ## License
 
