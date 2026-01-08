@@ -1,4 +1,4 @@
-# gwt - Git Worktree Manager
+# gwt - Git WorktTee Manager
 
 A CLI tool for managing git worktrees with a filesystem-like interface.
 
